@@ -209,12 +209,16 @@
         </div>
     </div>
 
+    <!-- Cabeamento, Montagem e Impedância com Ambas as Imagens -->
     <h3 class="text-2xl font-bold text-stone-800 mt-10 mb-4 border-b pb-2">Anatomia do Cabo, Montagem e Casamento de Impedância</h3>
     <p class="text-stone-700 mb-6 leading-relaxed">
-        Embora os conectores DMX mais comuns sejam os XLR de 3 pinos (idênticos aos de microfone), <strong>nunca utilize cabos de áudio comuns para DMX</strong>. O sinal DMX trabalha em alta frequência e exige um cabo blindado especial com <strong>impedância de 110 &Omega;</strong>. Cabos de microfone comuns possuem cerca de 75 &Omega;, o que pode causar o terrível "flickering" (luzes piscando sozinhas devido ao sinal batendo no fim da linha e voltando em forma de eco).
+        Embora os conectores DMX mais comuns sejam os XLR de 3 pinos (idênticos aos de microfone), <strong>nunca utilize cabos de áudio comuns para DMX</strong>. O sinal DMX trabalha em alta frequência e exige um cabo blindado especial com <strong>impedância de 110 &Omega;</strong>. Cabos de microfone comuns possuem cerca de 75 &Omega;, o que causa o terrível "flickering" (luzes piscando sozinhas devido ao sinal batendo no fim da linha e voltando em forma de eco).
     </p>
 
+    <!-- Seção de Montagem e Fotos Reais -->
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+        
+        <!-- Coluna 1: Guia de Soldagem XLR -->
         <div class="border border-stone-200 rounded-xl p-5 bg-stone-50 flex flex-col justify-between">
             <div>
                 <h4 class="font-bold text-stone-900 mb-3 flex items-center gap-2">🛠️ Guia de Soldagem: Conector XLR (3 pinos)</h4>
@@ -252,20 +256,28 @@
             </div>
         </div>
 
+        <!-- Coluna 2: O Terminador DMX -->
         <div class="border border-stone-200 rounded-xl p-5 bg-stone-50 flex flex-col justify-between">
             <div>
                 <h4 class="font-bold text-stone-900 mb-2 flex items-center gap-2">🛑 O Terminador DMX (Obrigatório)</h4>
-                <p class="text-xs text-stone-600 leading-relaxed">
+                <p class="text-xs text-stone-600 leading-relaxed mb-3">
                     No último aparelho da sua fita DMX, você deve plugar um terminador na saída XLR. Ele absorve a energia do sinal, impedindo reflexões indesejadas.
                 </p>
+                
+                <div class="bg-stone-800 text-amber-500 font-mono text-xs p-3 rounded-lg border border-stone-700 mb-4">
+                    <strong>Como montar um terminador:</strong><br>
+                    Pegue um conector XLR Macho sobressalente e solde um resistor de <strong>120 &Omega; (1/4W)</strong> conectando diretamente os <strong>Pinos 2 e 3</strong>. Feche o conector e plugue no fim da linha!
+                </div>
             </div>
-            <div class="bg-stone-800 text-amber-500 font-mono text-xs p-3 rounded-lg mt-3 border border-stone-700">
-                <strong>Como montar um terminador:</strong><br>
-                Pegue um conector XLR Macho sobressalente e solde um resistor de <strong>120 &Omega; (1/4W)</strong> conectando diretamente os <strong>Pinos 2 e 3</strong>. Feche o conector e plugue no fim da linha!
+            
+            <div class="mt-2">
+                <p class="text-xs font-semibold text-stone-500 mb-2 uppercase tracking-wider">📸 Referência Visual do Terminador:</p>
+                <img src="img/TERMINADOR DMX.jpg" alt="Exemplo de Montagem do Terminador DMX" class="rounded-lg shadow-md max-w-full h-auto border border-stone-200 mx-auto">
             </div>
         </div>
+        
     </div>
-    <h3 class="text-2xl font-bold text-stone-800 mt-10 mb-4 border-b pb-2">A Mágica do Sinal Diferencial (RS-485)</h3>
+                <h3 class="text-2xl font-bold text-stone-800 mt-10 mb-4 border-b pb-2">A Mágica do Sinal Diferencial (RS-485)</h3>
     <p class="text-stone-700 mb-4">O DMX trafega em cabos balanceados. Para evitar que motores de moving heads e cabos de energia de alta potência no palco gerem ruídos magnéticos nas luzes, o sistema envia o sinal duplicado e espelhado. Veja no simulador matemático abaixo como a subtração anula o ruído.</p>
 
     <div class="bg-stone-50 p-4 rounded-xl border border-stone-200 mb-8 shadow-inner">
