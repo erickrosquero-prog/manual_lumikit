@@ -174,59 +174,153 @@
             </section>
 
             <section id="mod-1" class="tab-content">
-                <div class="mb-8">
-                    <p class="text-sm font-semibold text-amber-600 uppercase tracking-widest mb-2">Módulo 1</p>
-                    <h2 class="text-3xl font-extrabold text-stone-900">Fundamentos Físicos e Sinal</h2>
-                </div>
+    <div class="mb-8">
+        <p class="text-sm font-semibold text-amber-600 uppercase tracking-widest mb-2">Módulo 1</p>
+        <h2 class="text-3xl font-extrabold text-stone-900">Fundamentos Físicos e Sinal</h2>
+    </div>
 
-                <p class="text-stone-700 leading-relaxed mb-8">
-                    Para operar qualquer software de iluminação, precisamos primeiro entender como a informação viaja do computador até o refletor lá no palco. Esta seção desmistifica o protocolo DMX, a anatomia dos cabos e a matemática por trás da transmissão de dados imune a ruídos.
+    <p class="text-stone-700 leading-relaxed mb-8 text-lg">
+        Para operar qualquer software de iluminação, precisamos entender como a informação viaja do computador até o refletor lá no palco. Esta seção desmistifica a transmissão serial, a anatomia e montagem dos cabos, e a infraestrutura de rede digital imune a ruídos.
+    </p>
+
+    <h3 class="text-2xl font-bold text-stone-800 mt-10 mb-4 border-b pb-2">Como 512 Canais Passam por um Único Cabo?</h3>
+    <p class="text-stone-700 mb-4 leading-relaxed">
+        O segredo do DMX512 para enviar informações de até 512 aparelhos diferentes por apenas um par de fios é uma técnica chamada <strong>Multiplexagem por Divisão de Tempo (TDM)</strong>. Em vez de enviar todos os canais ao mesmo tempo, os dados são transmitidos de forma <strong>serial</strong> (um bit atrás do outro) em uma velocidade altíssima de <strong>250 kbps</strong> (250.000 bits por segundo).
+    </p>
+    
+    <div class="bg-amber-50 border border-amber-200 p-5 rounded-xl mb-8 text-sm text-stone-800 leading-relaxed">
+        <h4 class="font-bold text-amber-900 mb-2">⏱️ A Linha de Produção Temporal (O Pacote DMX)</h4>
+        <p class="mb-3">O fluxo contínuo de dados funciona como uma esteira que envia pacotes idênticos cerca de 44 vezes por segundo. Cada pacote segue uma estrutura matemática rígida no tempo:</p>
+        <ol class="list-decimal pl-5 space-y-1 text-stone-700">
+            <li><strong>MAB / Break:</strong> Um pulso longo de reset que avisa todos os refletores: <em>"Atenção, um novo pacote vai começar!"</em>.</li>
+            <li><strong>Start Code (Canal 0):</strong> Um byte de controle (geralmente com valor 0) para alinhar os microcontroladores.</li>
+            <li><strong>Os Apartamentos de Dados:</strong> O Lumikit envia sequencialmente o valor do Canal 1, depois o Canal 2, depois o Canal 3... até o Canal 512. Cada canal tem uma janela de tempo exata para passar o seu valor (de 0 a 255).</li>
+        </ol>
+        <p class="mt-3 font-semibold text-amber-800">Cada refletor fica "contando" os bytes na linha. Se o seu patch foi configurado no endereço 9, o aparelho ignora os 8 primeiros bytes e captura exatamente o 9º byte que passa pelo cabo.</p>
+    </div>
+
+    <div class="bg-blue-50 p-6 rounded-xl border border-blue-100 mb-8">
+        <h4 class="font-bold text-blue-800 text-lg mb-2">🏢 A Metáfora do Prédio</h4>
+        <p class="text-blue-900 text-sm leading-relaxed mb-4">Pense num Universo DMX como um prédio de 512 apartamentos. Cada aparelho (fixture) aluga apartamentos consecutivos. Se um refletor precisa de 8 canais e começa no endereço 1, ele ocupa os apartamentos 1 a 8. O próximo só pode alugar a partir do 9.</p>
+        <div class="flex flex-wrap gap-2">
+            <div class="px-3 py-1 bg-blue-600 text-white text-xs font-bold rounded">Apto 1-8: Refletor A</div>
+            <div class="px-3 py-1 bg-amber-500 text-white text-xs font-bold rounded">Apto 9-16: Refletor B</div>
+            <div class="px-3 py-1 bg-stone-300 text-stone-600 text-xs font-bold rounded">Apto 17... (Livres)</div>
+        </div>
+    </div>
+
+    <h3 class="text-2xl font-bold text-stone-800 mt-10 mb-4 border-b pb-2">Anatomia do Cabo, Montagem e Casamento de Impedância</h3>
+    <p class="text-stone-700 mb-4 leading-relaxed">
+        Embora os conectores DMX mais comuns sejam os XLR de 3 pinos (idênticos aos de microfone), <strong>nunca utilize cabos de áudio comuns para DMX</strong>. O sinal DMX trabalha em alta frequência e exige um cabo blindado especial com <strong>impedância de 110 &Omega;</strong>. Cabos de microfone comuns possuem cerca de 75 &Omega;, o que causa o terrível "flickering" (luzes piscando sozinhas devido ao sinal batendo no fim da linha e voltando em forma de eco).
+    </p>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+        <div class="border border-stone-200 rounded-xl p-5 bg-stone-50">
+            <h4 class="font-bold text-stone-900 mb-3 flex items-center gap-2">🛠️ Guia de Soldagem: Conector XLR (3 pinos)</h4>
+            <table class="w-full text-sm text-left border-collapse">
+                <thead>
+                    <tr class="border-b border-stone-300 text-stone-500 text-xs uppercase">
+                        <th class="py-2">Pino</th>
+                        <th class="py-2">Função</th>
+                        <th class="py-2">Fio Correto</th>
+                    </tr>
+                </thead>
+                <tbody class="text-stone-700 font-mono text-xs">
+                    <tr class="border-b border-stone-200">
+                        <td class="py-2 font-bold text-stone-900">Pino 1</td>
+                        <td class="py-2">GND (Terra)</td>
+                        <td class="py-2 text-stone-500">Malha/Blindagem descalça</td>
+                    </tr>
+                    <tr class="border-b border-stone-200">
+                        <td class="py-2 font-bold text-blue-600">Pino 2</td>
+                        <td class="py-2">Data - (Invertido)</td>
+                        <td class="py-2 text-red-600">Fio Branco (ou Azul)</td>
+                    </tr>
+                    <tr>
+                        <td class="py-2 font-bold text-red-600">Pino 3</td>
+                        <td class="py-2">Data + (Original)</td>
+                        <td class="py-2 text-green-600">Fio Vermelho (outra cor)</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="border border-stone-200 rounded-xl p-5 bg-stone-50 flex flex-col justify-between">
+            <div>
+                <h4 class="font-bold text-stone-900 mb-2 flex items-center gap-2">🛑 O Terminador DMX (Obrigatório)</h4>
+                <p class="text-xs text-stone-600 leading-relaxed">
+                    No último aparelho da sua fita DMX, você deve plugar um terminador na saída XLR. Ele absorve a energia do sinal, impedindo reflexões indesejadas.
                 </p>
+            </div>
+            <div class="bg-stone-800 text-amber-500 font-mono text-xs p-3 rounded-lg mt-3 border border-stone-700">
+                <strong>Como montar um terminador:</strong><br>
+                Pegue um conector XLR Macho sobressalente e solde um resistor de <strong>120 &Omega; (1/4W)</strong> conectando diretamente os <strong>Pinos 2 e 3</strong>. Feche o conector e plugue no fim da linha!
+            </div>
+        </div>
+    </div>
 
-                <h3 class="text-2xl font-bold text-stone-800 mt-10 mb-4 border-b pb-2">O Protocolo DMX 512</h3>
-                <p class="text-stone-700 mb-4">O <strong>DMX 512</strong> (Digital Multiplex) é o idioma universal da iluminação. Cada Universo agrupa 512 canais, onde cada canal transporta um valor de 0 a 255.</p>
-                
-                <div class="bg-blue-50 p-6 rounded-xl border border-blue-100 mb-8">
-                    <h4 class="font-bold text-blue-800 text-lg mb-2">🏢 A Metáfora do Prédio</h4>
-                    <p class="text-blue-900 text-sm leading-relaxed mb-4">Pense num Universo DMX como um prédio de 512 apartamentos. Cada aparelho (fixture) aluga apartamentos consecutivos. Se um refletor precisa de 8 canais e começa no endereço 1, ele ocupa os apartamentos 1 a 8. O próximo só pode alugar a partir do 9.</p>
-                    <div class="flex flex-wrap gap-2">
-                        <div class="px-3 py-1 bg-blue-600 text-white text-xs font-bold rounded">Apto 1-8: Refletor A</div>
-                        <div class="px-3 py-1 bg-amber-500 text-white text-xs font-bold rounded">Apto 9-16: Refletor B</div>
-                        <div class="px-3 py-1 bg-stone-300 text-stone-600 text-xs font-bold rounded">Apto 17... (Livres)</div>
-                    </div>
-                </div>
+    <div class="bg-red-50 border border-red-200 rounded-xl p-5 mb-8 text-sm text-stone-800">
+        <h4 class="font-bold text-red-800 text-base mb-3">🔍 Checklist de Verificação de Erros de Sinal</h4>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+            <div class="bg-white p-3 rounded-lg border border-red-100">
+                <span class="font-bold text-red-700 block mb-1">❌ Sintoma: Aparelhos distantes piscando ou desobedientes</span>
+                <p class="text-stone-600"><strong>Causa comum:</strong> Falta de terminador no fim da linha ou inversão acidental de fios nos pinos 2 e 3 de alguma solda intermediária.</p>
+            </div>
+            <div class="bg-white p-3 rounded-lg border border-red-100">
+                <span class="font-bold text-red-700 block mb-1">❌ Sintoma: Todo o universo DMX para de responder ao mesmo tempo</span>
+                <p class="text-stone-600"><strong>Causa comum:</strong> Um aparelho da linha entrou em curto interno no chip RS-485 matando o sinal da rede inteira. Vá desconectando o cabo de metade da linha para isolar qual refletor queimou.</p>
+            </div>
+        </div>
+    </div>
 
-                <h3 class="text-2xl font-bold text-stone-800 mt-10 mb-4 border-b pb-2">A Mágica do Sinal Diferencial (RS-485)</h3>
-                <p class="text-stone-700 mb-4">O DMX trafega em cabos com <strong>impedância de 110 &Omega;</strong>. Para evitar que motores e energia no palco causem interferências, o DMX envia o sinal duplicado e invertido. Veja no gráfico abaixo como a subtração matemática anula o ruído externo.</p>
+    <h3 class="text-2xl font-bold text-stone-800 mt-10 mb-4 border-b pb-2">A Mágica do Sinal Diferencial (RS-485)</h3>
+    <p class="text-stone-700 mb-4">O DMX trafega em cabos balanceados. Para evitar que motores de moving heads e cabos de energia de alta potência no palco gerem ruídos magnéticos nas luzes, o sistema envia o sinal duplicado e espelhado. Veja no simulador matemático abaixo como a subtração anula o ruído.</p>
 
-                <div class="bg-stone-50 p-4 rounded-xl border border-stone-200 mb-8 shadow-inner">
-                    <div class="flex flex-col sm:flex-row justify-between items-center mb-4 gap-4">
-                        <span class="text-sm font-semibold text-stone-600">Simulador de Transmissão RS-485</span>
-                        <div class="flex items-center gap-2">
-                            <label class="text-xs font-bold text-stone-500">Intensidade do Ruído Elétrico:</label>
-                            <input type="range" id="noiseSlider" min="0" max="100" value="50" class="w-32 accent-amber-600">
-                        </div>
-                    </div>
-                    <div class="chart-container">
-                        <canvas id="rs485Chart"></canvas>
-                    </div>
-                    <p class="text-xs text-center text-stone-500 mt-4">O "Sinal Original (Pino 3)" e "Sinal Invertido (Pino 2)" sofrem a mesma interferência. A "Subtração (Pino3 - Pino2)" dobra o sinal limpo e anula o ruído (Ruído - Ruído = 0).</p>
-                </div>
+    <div class="bg-stone-50 p-4 rounded-xl border border-stone-200 mb-8 shadow-inner">
+        <div class="flex flex-col sm:flex-row justify-between items-center mb-4 gap-4">
+            <span class="text-sm font-semibold text-stone-600">Simulador de Transmissão RS-485</span>
+            <div class="flex items-center gap-2">
+                <label class="text-xs font-bold text-stone-500">Intensidade do Ruído Elétrico:</label>
+                <input type="range" id="noiseSlider" min="0" max="100" value="50" class="w-32 accent-amber-600">
+            </div>
+        </div>
+        <div class="chart-container">
+            <canvas id="rs485Chart"></canvas>
+        </div>
+        <p class="text-xs text-center text-stone-500 mt-4">O "Sinal Original (Pino 3)" e "Sinal Invertido (Pino 2)" sofrem a mesma interferência. A "Subtração (Pino3 - Pino2)" dobra o sinal limpo e anula o ruído (Ruído - Ruído = 0).</p>
+    </div>
 
-                <h3 class="text-2xl font-bold text-stone-800 mt-10 mb-4 border-b pb-2">A Revolução Art-Net</h3>
-                <p class="text-stone-700 mb-4">Passar dezenas de cabos XLR até a técnica tornou-se inviável. O <strong>Art-Net</strong> encapsula pacotes DMX512 em rede Ethernet padrão.</p>
-                <div class="flex flex-wrap items-center gap-4 bg-stone-100 p-4 rounded-lg text-sm text-stone-700">
-                    <span class="text-2xl">💻</span>
-                    <span>Computador (Lumikit)</span>
-                    <span class="font-bold text-amber-600">&rarr; Cabo RJ45 (Rede) &rarr;</span>
-                    <span class="text-2xl">📟</span>
-                    <span>Node Art-Net (Palco)</span>
-                    <span class="font-bold text-amber-600">&rarr; Cabo XLR (DMX) &rarr;</span>
-                    <span class="text-2xl">💡</span>
-                    <span>Aparelhos</span>
-                </div>
-            </section>
+    <h3 class="text-2xl font-bold text-stone-800 mt-10 mb-4 border-b pb-2">Aprofundamento Técnico em Art-Net</h3>
+    <p class="text-stone-700 mb-4 leading-relaxed">
+        Passar dezenas de cabos XLR individuais da cabine técnica até as treliças do palco tornou-se inviável. O <strong>Art-Net</strong> é um protocolo royalty-free desenvolvido pela Artistic Licence que encapsula pacotes inteiros de dados DMX512 dentro de frames de rede **UDP/IP Ethernet padrão** (porta 6454).
+    </p>
 
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+        <div class="bg-stone-50 p-4 border border-stone-200 rounded-xl">
+            <span class="text-xl block mb-1">🚀 Velocidade Absoluta</span>
+            <p class="text-xs text-stone-600 leading-relaxed">Enquanto um cabo de DMX comum aguenta apenas 1 Universo de 512 canais, um único cabo de rede de categoria Cat5e/Cat6 trafega facilmente dezenas de milhares de universos simultâneos.</p>
+        </div>
+        <div class="bg-stone-50 p-4 border border-stone-200 rounded-xl">
+            <span class="text-xl block mb-1">🔢 Sub-redes e Universos</span>
+            <p class="text-xs text-stone-600 leading-relaxed">O Art-Net mapeia os dados em 128 Net-Subnets e Universos. No Lumikit, configuramos o IP do computador na mesma faixa do Node para mapear o envio perfeitamente.</p>
+        </div>
+        <div class="bg-stone-50 p-4 border border-stone-200 rounded-xl">
+            <span class="text-xl block mb-1">📟 O papel do Node Art-Net</span>
+            <p class="text-xs text-stone-600 leading-relaxed">O Node funciona como um tradutor eletrônico no palco. Ele recebe os cabos de rede vindos do Lumikit, lê os pacotes IP e "descompacta" as saídas em portas XLR físicas para os refletores.</p>
+        </div>
+    </div>
+
+    <div class="flex flex-wrap items-center gap-4 bg-stone-100 p-4 rounded-lg text-sm text-stone-700">
+        <span class="text-2xl">💻</span>
+        <span>Computador (Lumikit)</span>
+        <span class="font-bold text-amber-600">&rarr; Cabo RJ45 (Rede Ethernet IP) &rarr;</span>
+        <span class="text-2xl">📟</span>
+        <span>Node Art-Net (Conversor de Palco)</span>
+        <span class="font-bold text-amber-600">&rarr; Cabo XLR (Físico 110 &Omega;) &rarr;</span>
+        <span class="text-2xl">💡</span>
+        <span>Aparelhos</span>
+    </div>
+</section>
         </div>
     </main>
 
