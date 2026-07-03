@@ -1,0 +1,1107 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Curso Prático de Iluminação: Lumikit</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Chosen Palette: Warm Neutrals & Amber Accents (bg-stone-50, text-stone-800, amber-600, sky-700) -->
+    <!-- Application Structure Plan: A responsive sidebar navigation SPA. The source report is highly modular, making a dashboard-style multi-view structure optimal. Users can navigate through theoretical concepts (Module 1-2) to practical software logic (Module 3-5) and troubleshooting (Module 6) without losing their place. Interactive charts and simulators replace static tables and text explanations to enhance understanding of complex concepts like DMX addressing, RS-485 noise cancellation, and phase offsets. -->
+    <!-- Visualization & Content Choices: 
+        1. RS-485 Signal (Módulo 1) -> Goal: Inform -> Interactive Line Chart (Chart.js) -> User sees how noise cancellation works mathematically -> Justification: Visualizing differential signals is much easier than reading about them. 
+        2. DMX Fixture Profile (Módulo 2) -> Goal: Change/Interact -> HTML/JS Color Mixer -> User moves sliders to see how DMX channels 1-5 create colors -> Justification: Replaces static table with a hands-on learning tool. 
+        3. Priority Logic (Módulo 3) -> Goal: Organize -> HTML Flex Stack -> Visually represents the "Last takes precedence" rule -> Justification: Clarifies the top-to-bottom processing sequence.
+        4. Wizard Phase Offset (Módulo 3) -> Goal: Compare/Change -> Interactive Line Chart (Chart.js) with Slider -> User changes degrees (0, 45, 90) to see wave separation -> Justification: Beautifully explains complex trigonometric offsets without SVG or Mermaid.
+        Library/Method: Chart.js for data mapping, Tailwind + Vanilla JS for UI interactions. NO SVG/Mermaid. -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 800px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 40vh;
+            min-height: 300px;
+            max-height: 450px;
+        }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #d6d3d1; border-radius: 10px; }
+        .nav-active { background-color: #fef3c7; border-left-color: #d97706; font-weight: 600; color: #b45309; }
+        .tab-content { display: none; animation: fadeIn 0.3s ease-in-out; }
+        .tab-content.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .accordion-content { max-height: 0; overflow: hidden; transition: max-height 0.3s ease-out; }
+        .accordion-content.expanded { max-height: 500px; }
+        
+        /* Simulated Fixture Styles */
+        .stage-backdrop {
+            background: radial-gradient(circle at top, #1c1917 0%, #0c0a09 100%);
+        }
+    </style>
+</head>
+<body class="bg-stone-50 text-stone-800 flex h-screen overflow-hidden antialiased">
+
+    <!-- Sidebar Navigation -->
+    <aside class="w-64 bg-stone-100 border-r border-stone-200 flex flex-col hidden md:flex flex-shrink-0 z-20">
+        <div class="p-6 border-b border-stone-200 bg-stone-50">
+            <h1 class="text-xl font-bold text-amber-700 tracking-tight">Lumikit Master</h1>
+            <p class="text-xs text-stone-500 mt-1 uppercase tracking-wider font-semibold">Curso de Iluminação</p>
+        </div>
+        <nav class="flex-1 overflow-y-auto custom-scrollbar py-4" id="main-nav">
+            <button data-target="mod-intro" class="w-full text-left px-6 py-3 border-l-4 border-transparent hover:bg-stone-200 transition-colors nav-active">Visão Geral</button>
+            <button data-target="mod-1" class="w-full text-left px-6 py-3 border-l-4 border-transparent hover:bg-stone-200 transition-colors">1. Fundamentos Físicos</button>
+            <button data-target="mod-2" class="w-full text-left px-6 py-3 border-l-4 border-transparent hover:bg-stone-200 transition-colors">2. Anatomia & Aparelhos</button>
+            <button data-target="mod-3" class="w-full text-left px-6 py-3 border-l-4 border-transparent hover:bg-stone-200 transition-colors">3. O Ecossistema Lumikit</button>
+            <button data-target="mod-3-wizard" class="w-full text-left px-6 py-3 border-l-4 border-transparent hover:bg-stone-200 transition-colors pl-10 text-sm">↳ Wizards & Avanço</button>
+            <button data-target="mod-4" class="w-full text-left px-6 py-3 border-l-4 border-transparent hover:bg-stone-200 transition-colors">4. Operação MIDI</button>
+            <button data-target="mod-5" class="w-full text-left px-6 py-3 border-l-4 border-transparent hover:bg-stone-200 transition-colors">5. Integração & Automação</button>
+            <button data-target="mod-6" class="w-full text-left px-6 py-3 border-l-4 border-transparent hover:bg-stone-200 transition-colors">6. Resolução de Problemas</button>
+        </nav>
+    </aside>
+
+    <!-- Mobile Header -->
+    <div class="md:hidden fixed top-0 left-0 w-full bg-stone-100 border-b border-stone-200 p-4 z-30 flex justify-between items-center">
+        <h1 class="text-lg font-bold text-amber-700">Lumikit Master</h1>
+        <button id="mobile-menu-btn" class="text-stone-600 text-2xl px-2">&#9776;</button>
+    </div>
+
+    <!-- Mobile Navigation Drawer -->
+    <div id="mobile-nav" class="fixed inset-0 bg-stone-800/50 z-40 hidden">
+        <div class="bg-stone-100 w-3/4 h-full shadow-xl flex flex-col">
+            <div class="p-4 border-b border-stone-200 flex justify-between items-center">
+                <span class="font-bold text-stone-800">Menu</span>
+                <button id="close-mobile-btn" class="text-2xl text-stone-500">&times;</button>
+            </div>
+            <nav class="flex-1 overflow-y-auto" id="mobile-nav-links">
+            </nav>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <main class="flex-1 overflow-y-auto custom-scrollbar relative pt-16 md:pt-0 bg-white">
+        <div class="max-w-4xl mx-auto p-6 md:p-10 pb-24">
+
+            <!-- Introduction Section -->
+            <section id="mod-intro" class="tab-content active">
+                <div class="mb-8">
+                    <p class="text-sm font-semibold text-amber-600 uppercase tracking-widest mb-2">Introdução</p>
+                    <h2 class="text-4xl font-extrabold text-stone-900 mb-4">A Arte da Iluminação</h2>
+                    <blockquote class="border-l-4 border-amber-500 pl-4 py-2 italic text-stone-600 bg-stone-50 rounded-r-lg text-lg">
+                        "A luz não deve ser apenas vista; ela deve ajudar a revelar a mensagem."
+                    </blockquote>
+                </div>
+                
+                <p class="text-stone-700 leading-relaxed mb-6 text-lg">
+                    Este ambiente interativo é o seu material de apoio oficial para o treinamento da equipa de iluminação. Projetado para levar qualquer pessoa — mesmo sem experiência prévia — ao nível de operador avançado do software Lumikit. Explore os módulos no menu lateral para interagir com os conceitos físicos e práticos da iluminação cênica.
+                </p>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-8">
+                    <div class="bg-stone-50 p-5 rounded-xl border border-stone-100 shadow-sm hover:shadow-md transition-shadow">
+                        <div class="text-3xl mb-3">🔌</div>
+                        <h3 class="font-bold text-lg mb-2">Do Físico...</h3>
+                        <p class="text-stone-600 text-sm">Entenda como a eletricidade se transforma em dados através dos protocolos DMX e Art-Net.</p>
+                    </div>
+                    <div class="bg-stone-50 p-5 rounded-xl border border-stone-100 shadow-sm hover:shadow-md transition-shadow">
+                        <div class="text-3xl mb-3">💻</div>
+                        <h3 class="font-bold text-lg mb-2">Ao Digital...</h3>
+                        <p class="text-stone-600 text-sm">Domine a interface do Lumikit, prioridades de processamento e criação de shows virtuais.</p>
+                    </div>
+                    <div class="bg-stone-50 p-5 rounded-xl border border-stone-100 shadow-sm hover:shadow-md transition-shadow">
+                        <div class="text-3xl mb-3">🎛️</div>
+                        <h3 class="font-bold text-lg mb-2">Ao Controle...</h3>
+                        <p class="text-stone-600 text-sm">Aprenda a mapear interfaces MIDI físicas para operar os cultos com agilidade tátil.</p>
+                    </div>
+                    <div class="bg-stone-50 p-5 rounded-xl border border-stone-100 shadow-sm hover:shadow-md transition-shadow">
+                        <div class="text-3xl mb-3">🤖</div>
+                        <h3 class="font-bold text-lg mb-2">À Automação</h3>
+                        <p class="text-stone-600 text-sm">Integre o Lumikit ao Holyrics e Stream Deck (Companion) para um culto sincronizado.</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Module 1: Physics and Signal -->
+            <section id="mod-1" class="tab-content">
+                <div class="mb-8">
+                    <p class="text-sm font-semibold text-amber-600 uppercase tracking-widest mb-2">Módulo 1</p>
+                    <h2 class="text-3xl font-extrabold text-stone-900">Fundamentos Físicos e Sinal</h2>
+                </div>
+
+                <p class="text-stone-700 leading-relaxed mb-8">
+                    Para operar qualquer software de iluminação, precisamos primeiro entender como a informação viaja do computador até o refletor lá no palco. Esta seção desmistifica o protocolo DMX, a anatomia dos cabos e a matemática por trás da transmissão de dados imune a ruídos.
+                </p>
+
+                <h3 class="text-2xl font-bold text-stone-800 mt-10 mb-4 border-b pb-2">O Protocolo DMX 512</h3>
+                <p class="text-stone-700 mb-4">O <strong>DMX 512</strong> (Digital Multiplex) é o idioma universal da iluminação. Cada Universo agrupa 512 canais, onde cada canal transporta um valor de 0 a 255.</p>
+                
+                <div class="bg-blue-50 p-6 rounded-xl border border-blue-100 mb-8">
+                    <h4 class="font-bold text-blue-800 text-lg mb-2">🏢 A Metáfora do Prédio</h4>
+                    <p class="text-blue-900 text-sm leading-relaxed mb-4">Pense num Universo DMX como um prédio de 512 apartamentos. Cada aparelho (fixture) aluga apartamentos consecutivos. Se um refletor precisa de 8 canais e começa no endereço 1, ele ocupa os apartamentos 1 a 8. O próximo só pode alugar a partir do 9.</p>
+                    <div class="flex flex-wrap gap-2">
+                        <div class="px-3 py-1 bg-blue-600 text-white text-xs font-bold rounded">Apto 1-8: Refletor A</div>
+                        <div class="px-3 py-1 bg-amber-500 text-white text-xs font-bold rounded">Apto 9-16: Refletor B</div>
+                        <div class="px-3 py-1 bg-stone-300 text-stone-600 text-xs font-bold rounded">Apto 17... (Livres)</div>
+                    </div>
+                </div>
+
+                <h3 class="text-2xl font-bold text-stone-800 mt-10 mb-4 border-b pb-2">A Mágica do Sinal Diferencial (RS-485)</h3>
+                <p class="text-stone-700 mb-4">O DMX trafega em cabos com <strong>impedância de 110 &Omega;</strong>. Para evitar que motores e energia no palco causem interferências, o DMX envia o sinal duplicado e invertido. Veja no gráfico abaixo como a subtração matemática anula o ruído externo.</p>
+
+                <div class="bg-stone-50 p-4 rounded-xl border border-stone-200 mb-8 shadow-inner">
+                    <div class="flex flex-col sm:flex-row justify-between items-center mb-4 gap-4">
+                        <span class="text-sm font-semibold text-stone-600">Simulador de Transmissão RS-485</span>
+                        <div class="flex items-center gap-2">
+                            <label class="text-xs font-bold text-stone-500">Intensidade do Ruído Elétrico:</label>
+                            <input type="range" id="noiseSlider" min="0" max="100" value="50" class="w-32 accent-amber-600">
+                        </div>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="rs485Chart"></canvas>
+                    </div>
+                    <p class="text-xs text-center text-stone-500 mt-4">O "Sinal Original (Pino 3)" e "Invertido (Pino 2)" sofrem a mesma interferência. A "Subtração (Pino3 - Pino2)" dobra o sinal limpo e anula o ruído (Ruído - Ruído = 0).</p>
+                </div>
+
+                <h3 class="text-2xl font-bold text-stone-800 mt-10 mb-4 border-b pb-2">A Revolução Art-Net</h3>
+                <p class="text-stone-700 mb-4">Passar dezenas de cabos XLR até a técnica tornou-se inviável. O <strong>Art-Net</strong> encapsula pacotes DMX512 em rede Ethernet padrão.</p>
+                <div class="flex items-center gap-4 bg-stone-100 p-4 rounded-lg text-sm text-stone-700">
+                    <span class="text-2xl">💻</span>
+                    <span>Computador (Lumikit)</span>
+                    <span class="font-bold text-amber-600">&rarr; Cabo RJ45 (Rede) &rarr;</span>
+                    <span class="text-2xl">📟</span>
+                    <span>Node Art-Net (Palco)</span>
+                    <span class="font-bold text-amber-600">&rarr; Cabo XLR (DMX) &rarr;</span>
+                    <span class="text-2xl">💡</span>
+                    <span>Aparelhos</span>
+                </div>
+            </section>
+
+            <!-- Module 2: Anatomy and Fixtures -->
+            <section id="mod-2" class="tab-content">
+                <div class="mb-8">
+                    <p class="text-sm font-semibold text-amber-600 uppercase tracking-widest mb-2">Módulo 2</p>
+                    <h2 class="text-3xl font-extrabold text-stone-900">Anatomia e Aparelhos</h2>
+                </div>
+
+                <p class="text-stone-700 leading-relaxed mb-8">
+                    Conhecer a ferramenta é o primeiro passo da criação. Nesta seção, você aprenderá sobre os tipos de refletores comuns em igrejas e como os canais DMX se convertem em funções visíveis de luz, cor e movimento.
+                </p>
+
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-10">
+                    <div class="bg-white border border-stone-200 rounded-lg p-4 shadow-sm">
+                        <h4 class="font-bold text-stone-800 mb-2">LED Par / COB</h4>
+                        <p class="text-xs text-stone-600">Luz fixa. Excelente para preenchimento de cor no palco, backlight e iluminação frontal branca (COB) limpa de sombras.</p>
+                    </div>
+                    <div class="bg-white border border-stone-200 rounded-lg p-4 shadow-sm">
+                        <h4 class="font-bold text-stone-800 mb-2">Moving Heads</h4>
+                        <p class="text-xs text-stone-600">Motorizados (Pan/Tilt). Dividem-se em Beam (feixe fino aéreo), Spot (desenhos/gobos) e Wash (luz difusa de área).</p>
+                    </div>
+                    <div class="bg-white border border-stone-200 rounded-lg p-4 shadow-sm">
+                        <h4 class="font-bold text-stone-800 mb-2">Ribaltas (LED Bars)</h4>
+                        <p class="text-xs text-stone-600">Barras horizontais de chão usadas no ciclorama para criar degradês de cores nas paredes atrás do altar.</p>
+                    </div>
+                </div>
+
+                <h3 class="text-2xl font-bold text-stone-800 mt-10 mb-4 border-b pb-2">Selecione o Aparelho e Controle em Tempo Real</h3>
+                <p class="text-stone-700 mb-6">Cada tipo de aparelho possui seu próprio mapa de canais (Profile). Escolha um aparelho nos botões abaixo para recarregar sua grade de faders DMX correspondentes e vê-los comandando o simulador físico à direita!</p>
+
+                <!-- Profile Picker Buttons -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                    <button id="btn-prof-parled" onclick="switchFixtureProfile('parled')" class="p-4 rounded-xl border text-left transition-all bg-amber-50 border-amber-500 ring-2 ring-amber-500/20">
+                        <span class="text-2xl block mb-2">💡</span>
+                        <h4 class="font-bold text-stone-900">PAR LED (Cores)</h4>
+                        <p class="text-xs text-stone-600 mt-1">Mistura de canais aditiva direta de cores de alta intensidade.</p>
+                    </button>
+                    <button id="btn-prof-cobs" onclick="switchFixtureProfile('cobs')" class="p-4 rounded-xl border text-left transition-all bg-white border-stone-200 hover:border-stone-300">
+                        <span class="text-2xl block mb-2">☀️</span>
+                        <h4 class="font-bold text-stone-900">COB LED (Frente)</h4>
+                        <p class="text-xs text-stone-600 mt-1">Luz branca uniforme de alta potência para vídeo e púlpito.</p>
+                    </button>
+                    <button id="btn-prof-movings" onclick="switchFixtureProfile('movings')" class="p-4 rounded-xl border text-left transition-all bg-white border-stone-200 hover:border-stone-300">
+                        <span class="text-2xl block mb-2">🛸</span>
+                        <h4 class="font-bold text-stone-900">Moving Heads (Híbridos)</h4>
+                        <p class="text-xs text-stone-600 mt-1">Aparelho motorizado com rotação Pan/Tilt e rodas de gobo/cor.</p>
+                    </button>
+                </div>
+
+                <!-- Unified Interactive Simulator Panel -->
+                <div class="bg-stone-900 rounded-2xl p-6 shadow-xl border border-stone-800 text-stone-100">
+                    <div class="flex items-center gap-3 mb-6 border-b border-stone-800 pb-4">
+                        <span id="active-prof-icon" class="text-3xl">💡</span>
+                        <div>
+                            <h4 id="active-prof-title" class="font-bold text-lg text-amber-500">PAR LED</h4>
+                            <p class="text-xs text-stone-400">Arraste os sliders de canais DMX abaixo e acompanhe o resultado no palco virtual ao lado</p>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                        <!-- Left: Dynamic DMX Channel Sliders Grid -->
+                        <div class="lg:col-span-7 flex flex-col justify-start space-y-4 max-h-[420px] overflow-y-auto pr-2 custom-scrollbar" id="channels-display-grid">
+                            <!-- Populated Dynamically via JS -->
+                        </div>
+
+                        <!-- Right: Real-time Virtual Stage Viewport -->
+                        <div class="lg:col-span-5 flex flex-col items-center">
+                            <span class="text-xs font-semibold uppercase text-stone-500 tracking-wider mb-2 self-start">Palco Virtual em Tempo Real</span>
+                            <div id="v-stage-container" class="relative w-full h-[320px] stage-backdrop rounded-xl overflow-hidden border border-stone-800 flex flex-col justify-between p-4 shadow-inner">
+                                <!-- Stage Roof Rigging -->
+                                <div class="absolute top-0 left-0 w-full h-3 bg-stone-800 border-b border-stone-700 flex justify-around items-center">
+                                    <div class="w-1.5 h-1.5 rounded-full bg-stone-600"></div>
+                                    <div class="w-1.5 h-1.5 rounded-full bg-stone-600"></div>
+                                    <div class="w-1.5 h-1.5 rounded-full bg-stone-600"></div>
+                                </div>
+
+                                <!-- Virtual Hanging Fixture Representation -->
+                                <div id="v-fixture-mount" class="relative mx-auto mt-2 w-16 h-12 flex flex-col items-center z-10 transition-transform duration-75">
+                                    <div class="w-8 h-2 bg-stone-600 rounded"></div> <!-- Bracket -->
+                                    <div id="v-fixture-body" class="w-12 h-10 bg-stone-700 rounded-full border border-stone-500 flex items-center justify-center relative shadow-md">
+                                        <!-- Projector Lens/Core -->
+                                        <div id="v-fixture-lens" class="w-6 h-6 rounded-full bg-stone-900 border border-stone-600 flex items-center justify-center transition-transform duration-75">
+                                            <div class="w-2 h-2 rounded-full bg-white opacity-20"></div>
+                                        </div>
+                                        <!-- Yoke for Moving Head -->
+                                        <div id="v-fixture-yoke" class="absolute -inset-1 border-2 border-stone-500 rounded-full pointer-events-none hidden"></div>
+                                    </div>
+                                </div>
+
+                                <!-- Projective Volumetric Light Beam -->
+                                <div id="v-light-beam" class="absolute inset-0 pointer-events-none opacity-30 mix-blend-screen" style="background: linear-gradient(to bottom, rgba(255,255,255,0.8), rgba(255,255,255,0));"></div>
+
+                                <!-- Stage Floor Spot / Gobo Target (Decoupled Glow/Gobo to keep the text crisp) -->
+                                <div id="v-floor-spot" class="absolute w-24 h-8 rounded-full flex items-center justify-center font-bold text-lg pointer-events-none transition-all duration-75">
+                                    <!-- Separated blurred layer for screen-blending glow -->
+                                    <div id="v-floor-glow" class="absolute inset-0 rounded-full blur-sm mix-blend-screen transition-all duration-75"></div>
+                                    <!-- Crisp and clear gobo silhouette overlay (Color injected inline via JS) -->
+                                    <span id="v-gobo-projected" class="relative z-10 font-black select-none text-2xl transition-all duration-75 scale-125"></span>
+                                </div>
+                                <div class="w-full h-1 bg-stone-800 rounded-full absolute bottom-4 left-0"></div> <!-- Floor line guide -->
+                            </div>
+                            <p id="simulator-info-text" class="text-xs text-stone-500 mt-2 text-center">Simulação de feixe de luz volumétrico por parâmetros de canais.</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Module 3: Lumikit Ecosystem -->
+            <section id="mod-3" class="tab-content">
+                <div class="mb-8">
+                    <p class="text-sm font-semibold text-amber-600 uppercase tracking-widest mb-2">Módulo 3</p>
+                    <h2 class="text-3xl font-extrabold text-stone-900">O Ecossistema Lumikit</h2>
+                </div>
+
+                <p class="text-stone-700 leading-relaxed mb-8">
+                    Bem-vindo ao cérebro da operação. O Lumikit funciona baseado numa estrutura hierárquica rigorosa. Compreender o "Patch", as "Cenas" e, acima de tudo, a "Sequência de Processamento de Janelas" é vital para ter o controle exato do que acontece no palco.
+                </p>
+
+                <div class="grid md:grid-cols-3 gap-6 mb-10">
+                    <div class="bg-stone-50 border border-stone-200 p-5 rounded-xl">
+                        <h4 class="font-bold text-amber-700 mb-2">1. Patch</h4>
+                        <p class="text-sm text-stone-600">Onde informamos ao programa o fabricante, modelo, e endereço inicial DMX físico de cada refletor no palco.</p>
+                    </div>
+                    <div class="bg-stone-50 border border-stone-200 p-5 rounded-xl">
+                        <h4 class="font-bold text-amber-700 mb-2">2. Cenas & Sequências</h4>
+                        <p class="text-sm text-stone-600">Cenas gravam fotos estáticas (ex: Oração). Sequências (Chasers) rodam passos em ciclo, dando movimento.</p>
+                    </div>
+                    <div class="bg-stone-50 border border-stone-200 p-5 rounded-xl">
+                        <h4 class="font-bold text-amber-700 mb-2">3. Presets</h4>
+                        <p class="text-sm text-stone-600">Paletas base (ex: Cor Vermelha, Posição "Pastor"). Se o púlpito mudar, basta atualizar o preset e todas as cenas se ajustam.</p>
+                    </div>
+                </div>
+
+                <h3 class="text-2xl font-bold text-stone-800 mt-10 mb-4 border-b pb-2">Sequência de Processamento de Janelas (LTP)</h3>
+                <p class="text-stone-700 mb-4">O Lumikit usa a regra onde o sinal processado por último tem a prioridade absoluta ("Latest Takes Precedence"). Interaja com a pilha abaixo para ver quem manda sobre quem.</p>
+
+                <div class="bg-white p-6 rounded-xl border border-stone-200 shadow-sm flex flex-col md:flex-row gap-8 items-center">
+                    <div class="flex-1 w-full space-y-2" id="priority-stack">
+                        <div class="p-3 bg-stone-100 border border-stone-300 rounded text-center cursor-pointer hover:bg-stone-200 transition" data-desc="A base. Efeitos rápidos e strobo. Facilmente sobrescrito por janelas abaixo.">1. Playback (Menos Prioridade)</div>
+                        <div class="p-3 bg-stone-100 border border-stone-300 rounded text-center cursor-pointer hover:bg-stone-200 transition" data-desc="Recebe comandos de uma mesa DMX física ligada ao PC.">2. Entrada DMX</div>
+                        <div class="p-3 bg-stone-100 border border-stone-300 rounded text-center cursor-pointer hover:bg-stone-200 transition" data-desc="Executa Cenas salvas de forma manual.">3. Lista de Cenas</div>
+                        <div class="p-3 bg-stone-200 border border-stone-400 rounded text-center cursor-pointer hover:bg-stone-300 transition font-medium" data-desc="Onde você ajusta canais para criar novas cenas. Tem alta prioridade para poder pausar visualmente os shows ao vivo enquanto você edita.">6. Editar DMX (Programador)</div>
+                        <div class="p-3 bg-amber-100 border border-amber-300 rounded text-center cursor-pointer hover:bg-amber-200 transition font-bold text-amber-800" data-desc="Telas para operadores leigos. Têm a palavra final absoluta sobre a iluminação.">7. Janelas Personalizadas (Mais Prioridade)</div>
+                    </div>
+                    <div class="flex-1 w-full h-full bg-stone-800 rounded-lg p-6 text-stone-200 flex flex-col justify-center min-h-[150px]">
+                        <h4 class="font-bold text-amber-500 mb-2">Informação da Camada</h4>
+                        <p id="priority-desc" class="text-sm">Clique numa das camadas à esquerda para entender a sua função na hierarquia de prioridade do Lumikit.</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Module 3: Advanced Wizards & Phase Offset -->
+            <section id="mod-3-wizard" class="tab-content">
+                <div class="mb-8">
+                    <p class="text-sm font-semibold text-amber-600 uppercase tracking-widest mb-2">Módulo 3: Avançado</p>
+                    <h2 class="text-3xl font-extrabold text-stone-900">Wizards e Avanço em Graus</h2>
+                </div>
+
+                <p class="text-stone-700 leading-relaxed mb-6">
+                    O <strong>Wizard</strong> é o gerador matemático do Lumikit. Ele evita que tenha de programar passo a passo efeitos contínuos de movimento (Pan/Tilt), Cor (Arco-íris) ou Intensidade. A magia principal deste sistema é o parâmetro de <strong>Avanço (em graus)</strong>, que cria o efeito fluido de onda.
+                </p>
+
+                <div class="bg-white p-6 rounded-xl border border-stone-200 shadow-sm mb-8">
+                    <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4 border-b border-stone-100 pb-4">
+                        <div>
+                            <h3 class="font-bold text-lg text-stone-800">Visualizador de Efeito em Onda</h3>
+                            <p class="text-xs text-stone-500">Simulação de 4 Moving Heads num ciclo contínuo.</p>
+                        </div>
+                        <div class="flex items-center gap-3 bg-stone-100 p-2 rounded-lg">
+                            <label class="text-xs font-bold text-stone-600">Avanço:</label>
+                            <select id="phaseSelect" class="bg-white border border-stone-300 rounded px-2 py-1 text-sm outline-none">
+                                <option value="0">0&deg; (Sincronizado)</option>
+                                <option value="45">45&deg; (Onda Suave)</option>
+                                <option value="90">90&deg; (Cascata Aberta)</option>
+                                <option value="180">180&deg; (Espelho Alternado)</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="chart-container h-64">
+                        <canvas id="phaseChart"></canvas>
+                    </div>
+
+                    <div class="mt-6 text-sm text-stone-700 bg-amber-50 p-4 rounded border border-amber-100" id="phase-explanation">
+                        <strong>Com 0&deg;:</strong> Todos os aparelhos recebem o mesmo comando ao mesmo tempo. Ideal para estrobos ou pancadas de luz uníssonas.
+                    </div>
+                </div>
+
+                <div class="bg-stone-50 p-6 rounded-lg border-l-4 border-amber-500 text-stone-700 text-sm">
+                    <strong>Passo a Passo Rápido:</strong>
+                    <ol class="list-decimal pl-5 mt-2 space-y-1">
+                        <li>Selecione os aparelhos na janela principal.</li>
+                        <li>Abra a aba Wizards e escolha o tipo (ex: Movimento -> Círculo).</li>
+                        <li>Ajuste o <strong>Size</strong> (Tamanho) para limitar a luz no altar.</li>
+                        <li>Altere o <strong>Avanço (em graus)</strong> para criar a onda (ex: 90&deg;).</li>
+                        <li>Clique em Gravar e salve num Playback.</li>
+                    </ol>
+                </div>
+            </section>
+
+            <!-- Module 4: MIDI Controls -->
+            <section id="mod-4" class="tab-content">
+                <div class="mb-8">
+                    <p class="text-sm font-semibold text-amber-600 uppercase tracking-widest mb-2">Módulo 4</p>
+                    <h2 class="text-3xl font-extrabold text-stone-900">Operação Externa (MIDI)</h2>
+                </div>
+                <p class="text-stone-700 leading-relaxed mb-6">
+                    Operar iluminação apenas com o rato é lento e cria atrasos no ritmo do culto. Mapear uma controladora MIDI física devolve a sensibilidade tátil (faders e botões) ao operador, combinando o poder do software com a agilidade analógica.
+                </p>
+
+                <div class="bg-stone-800 rounded-xl p-8 text-center shadow-lg relative overflow-hidden mb-8">
+                    <div class="absolute inset-0 opacity-10 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-white via-stone-800 to-stone-900"></div>
+                    <div class="relative z-10 flex flex-col items-center">
+                        <div class="flex gap-4 mb-6">
+                            <div class="w-8 h-32 bg-stone-700 rounded-lg border-2 border-stone-600 relative flex justify-center">
+                                <div class="w-10 h-6 bg-stone-300 rounded shadow-md absolute bottom-4 cursor-pointer hover:bg-white transition-colors"></div>
+                            </div>
+                            <div class="w-8 h-32 bg-stone-700 rounded-lg border-2 border-stone-600 relative flex justify-center">
+                                <div class="w-10 h-6 bg-stone-300 rounded shadow-md absolute bottom-12 cursor-pointer hover:bg-white transition-colors"></div>
+                            </div>
+                            <div class="w-8 h-32 bg-stone-700 rounded-lg border-2 border-stone-600 relative flex justify-center">
+                                <div class="w-10 h-6 bg-stone-300 rounded shadow-md absolute top-4 cursor-pointer hover:bg-white transition-colors"></div>
+                            </div>
+                        </div>
+                        <h4 class="text-xl font-bold text-white mb-2">Aprender MIDI (Learn)</h4>
+                        <p class="text-stone-400 text-sm max-w-md">No Lumikit: Clique direito na função virtual &rarr; "Aprender MIDI" &rarr; Mova o fader físico. Simples e instantâneo.</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Module 5: Automation Integrations -->
+            <section id="mod-5" class="tab-content">
+                <div class="mb-8">
+                    <p class="text-sm font-semibold text-amber-600 uppercase tracking-widest mb-2">Módulo 5</p>
+                    <h2 class="text-3xl font-extrabold text-stone-900">Integração e Automação</h2>
+                </div>
+                <p class="text-stone-700 leading-relaxed mb-6">
+                    O auge de uma operação de igreja moderna é a automação. Ferramentas como o Holyrics e o Bitfocus Companion assumem o trabalho mecânico de mudar cores e rotas, permitindo que a equipe foque na atmosfera.
+                </p>
+
+                <div class="grid md:grid-cols-2 gap-6">
+                    <div class="bg-stone-50 border border-stone-200 rounded-xl p-6">
+                        <h4 class="text-lg font-bold text-sky-800 mb-3 border-b border-stone-200 pb-2">Lumikit + Holyrics</h4>
+                        <p class="text-sm text-stone-700 mb-4">A ponte é feita por um software de portas virtuais como o <strong>loopMIDI</strong>.</p>
+                        <ul class="text-sm text-stone-600 space-y-2 list-disc pl-5">
+                            <li>O Holyrics avança um slide (ex: Música "Vim para Adorar-te").</li>
+                            <li>Envia nota MIDI automática (ex: C3).</li>
+                            <li>O Lumikit recebe via loopMIDI e acende a cena intimista Azul/Laranja no mesmo milissegundo.</li>
+                        </ul>
+                    </div>
+                    <div class="bg-stone-50 border border-stone-200 rounded-xl p-6">
+                        <h4 class="text-lg font-bold text-amber-800 mb-3 border-b border-stone-200 pb-2">Lumikit + Companion</h4>
+                        <p class="text-sm text-stone-700 mb-4">Controle total da cabine via rede usando protocolo <strong>OSC</strong> (Open Sound Control).</p>
+                        <ul class="text-sm text-stone-600 space-y-2 list-disc pl-5">
+                            <li>Companion envia String: <code class="bg-stone-200 px-1 py-0.5 rounded text-xs text-pink-600">/lumikit/submaster/1/value 1.0</code></li>
+                            <li>Um tablet via Wi-Fi pode acionar Luz, OBS e mutar a Mesa de Som num único toque de botão.</li>
+                        </ul>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Module 6: Troubleshooting FAQ -->
+            <section id="mod-6" class="tab-content">
+                <div class="mb-8">
+                    <p class="text-sm font-semibold text-amber-600 uppercase tracking-widest mb-2">Módulo 6</p>
+                    <h2 class="text-3xl font-extrabold text-stone-900">Resolução de Problemas (FAQ)</h2>
+                </div>
+                <p class="text-stone-700 leading-relaxed mb-6">
+                    No dia a dia, imprevistos acontecem. Este guia de troubleshooting rápido ajuda a diagnosticar e resolver os problemas mais comuns de sinal, endereçamento e rede encontrados antes do início do culto.
+                </p>
+
+                <div class="space-y-3" id="faq-container">
+                    <div class="border border-stone-200 rounded-lg bg-white overflow-hidden">
+                        <button class="w-full text-left px-5 py-4 font-bold text-stone-800 bg-stone-50 hover:bg-stone-100 flex justify-between items-center outline-none">
+                            <span>1. Os aparelhos estão a piscar sozinhos descontroladamente</span>
+                            <span class="text-amber-600 transform transition-transform">+</span>
+                        </button>
+                        <div class="accordion-content bg-white px-5 pb-0">
+                            <p class="text-sm text-stone-600 py-4 border-t border-stone-100">
+                                <strong>Causa:</strong> Reflexão de sinal (falta de terminador) ou uso de cabo de áudio comum.<br><br>
+                                <strong>Solução:</strong> Adicione um Terminador DMX (120 &Omega;) na saída do último aparelho da linha. Verifique se não há cabos rompidos sujando a malha de aterramento.
+                            </p>
+                        </div>
+                    </div>
+                    <div class="border border-stone-200 rounded-lg bg-white overflow-hidden">
+                        <button class="w-full text-left px-5 py-4 font-bold text-stone-800 bg-stone-50 hover:bg-stone-100 flex justify-between items-center outline-none">
+                            <span>2. O Lumikit está aberto, mas nada responde</span>
+                            <span class="text-amber-600 transform transition-transform">+</span>
+                        </button>
+                        <div class="accordion-content bg-white px-5 pb-0">
+                            <p class="text-sm text-stone-600 py-4 border-t border-stone-100">
+                                <strong>Causa:</strong> Falha de rede Art-Net ou Freeze ativo.<br><br>
+                                <strong>Solução:</strong> Verifique se o IP Estático da placa de rede do Windows continua fixado (ex: 2.0.0.100). Verifique se o botão "Blackout" ou "Freeze" não foi clicado sem querer na interface superior.
+                            </p>
+                        </div>
+                    </div>
+                    <div class="border border-stone-200 rounded-lg bg-white overflow-hidden">
+                        <button class="w-full text-left px-5 py-4 font-bold text-stone-800 bg-stone-50 hover:bg-stone-100 flex justify-between items-center outline-none">
+                            <span>3. Aparelho com patch feito não acende</span>
+                            <span class="text-amber-600 transform transition-transform">+</span>
+                        </button>
+                        <div class="accordion-content bg-white px-5 pb-0">
+                            <p class="text-sm text-stone-600 py-4 border-t border-stone-100">
+                                <strong>Causa:</strong> Endereçamento físico ou profile errado.<br><br>
+                                <strong>Solução:</strong> Vá ao painel traseiro do aparelho e confirme se o endereço bate com o Lumikit (ex: d001). Confirme se o modo de canais no menu do aparelho (ex: 8CH) é exatamente o mesmo selecionado no patch.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+        </div>
+    </main>
+
+    <script>
+        let currentTab = 'mod-intro';
+        let rs485ChartInstance = null;
+        let phaseChartInstance = null;
+        let selectedProfileKey = 'parled'; // State for active simulated profile
+        let strobeActiveState = true;
+        let animationFrameId = null;
+
+        // Smoothed Interpolation values for 2.5D physical movement dynamics
+        let interpolatedPan = 128;
+        let interpolatedTilt = 128;
+
+        // Configuration values representing active DMX slide values
+        let currentDmxValues = {};
+
+        // Definitions of simulated structures and behaviors
+        const fixtureProfiles = {
+            parled: {
+                title: "PAR LED — Profile de 7 Canais Comuns",
+                icon: "💡",
+                channels: [
+                    { name: "Dimmer (Intensidade Geral)", default: 255, min: 0, max: 255, key: "dimmer" },
+                    { name: "Vermelho (Red)", default: 200, min: 0, max: 255, key: "red" },
+                    { name: "Verde (Green)", default: 100, min: 0, max: 255, key: "green" },
+                    { name: "Azul (Blue)", default: 0, min: 0, max: 255, key: "blue" },
+                    { name: "Branco (White)", default: 0, min: 0, max: 255, key: "white" },
+                    { name: "Estrobo (Efeito Piscar)", default: 0, min: 0, max: 255, key: "strobe" },
+                    { name: "Efeitos (Programas Automáticos)", default: 0, min: 0, max: 255, key: "effects" }
+                ]
+            },
+            cobs: {
+                title: "COB LED — Profile de 6 Canais Comuns",
+                icon: "☀️",
+                channels: [
+                    { name: "Dimmer (Intensidade Geral)", default: 255, min: 0, max: 255, key: "dimmer" },
+                    { name: "Strobo (Efeito Piscar)", default: 0, min: 0, max: 255, key: "strobe" },
+                    { name: "Efeitos (Modos Automáticos)", default: 0, min: 0, max: 255, key: "effects" },
+                    { name: "Controle dos efeitos (Velocidade)", default: 128, min: 0, max: 255, key: "effect_speed" },
+                    { name: "Branco frio (Cold White)", default: 150, min: 0, max: 255, key: "cold_white" },
+                    { name: "Branco quente (Warm White)", default: 200, min: 0, max: 255, key: "warm_white" }
+                ]
+            },
+            movings: {
+                title: "Moving Head — Profile Híbrido de 14 Canais",
+                icon: "🛸",
+                channels: [
+                    { name: "Pan (Movimento Horizontal)", default: 128, min: 0, max: 255, key: "pan" },
+                    { name: "Tilt (Movimento Vertical - Frente/Trás)", default: 128, min: 0, max: 255, key: "tilt" },
+                    { name: "Velocidade do Pan/Tilt (CH3)", default: 128, min: 0, max: 255, key: "pantilt_speed" },
+                    { name: "Dimmer geral (Intensidade de Luz)", default: 255, min: 0, max: 255, key: "dimmer" },
+                    { name: "Dimmer do gobo (Intensidade)", default: 255, min: 0, max: 255, key: "gobo_dimmer" },
+                    { name: "Strobo do gobo (Piscar Desenho)", default: 0, min: 0, max: 255, key: "gobo_strobe" },
+                    { name: "Disco de cores do gobo", default: 0, min: 0, max: 255, key: "color_wheel" },
+                    { name: "Disco do gobo (Troca de Desenhos)", default: 0, min: 0, max: 255, key: "gobo_wheel" },
+                    { name: "Vermelho Wash (Preenchimento)", default: 50, min: 0, max: 255, key: "red_wash" },
+                    { name: "Verde Wash (Preenchimento)", default: 200, min: 0, max: 255, key: "green_wash" },
+                    { name: "Azul Wash (Preenchimento)", default: 255, min: 0, max: 255, key: "blue_wash" },
+                    { name: "Branco Wash (Preenchimento)", default: 0, min: 0, max: 255, key: "white_wash" },
+                    { name: "Strobo Wash (Piscar Preenchimento)", default: 0, min: 0, max: 255, key: "strobe_wash" },
+                    { name: "Modo Dummy (Reset/Especiais)", default: 0, min: 0, max: 255, key: "dummy" }
+                ]
+            }
+        };
+
+        // Navigation Logic
+        const navButtons = document.querySelectorAll('#main-nav button, #mobile-nav-links button');
+        const tabContents = document.querySelectorAll('.tab-content');
+        
+        function switchTab(targetId) {
+            tabContents.forEach(content => {
+                content.classList.remove('active');
+                if(content.id === targetId) content.classList.add('active');
+            });
+            
+            document.querySelectorAll('#main-nav button').forEach(btn => {
+                btn.classList.remove('nav-active');
+                if(btn.dataset.target === targetId) btn.classList.add('nav-active');
+            });
+            
+            document.getElementById('mobile-nav').classList.add('hidden');
+            
+            if(targetId === 'mod-1' && rs485ChartInstance) rs485ChartInstance.update();
+            if(targetId === 'mod-3-wizard' && phaseChartInstance) phaseChartInstance.update();
+            
+            window.scrollTo({top: 0, behavior: 'smooth'});
+        }
+
+        // Clone nav for mobile
+        const mobileNavLinks = document.getElementById('mobile-nav-links');
+        document.querySelectorAll('#main-nav button').forEach(btn => {
+            const clone = btn.cloneNode(true);
+            clone.className = 'w-full text-left px-6 py-4 border-b border-stone-200 hover:bg-stone-200 transition-colors block';
+            clone.addEventListener('click', () => switchTab(clone.dataset.target));
+            mobileNavLinks.appendChild(clone);
+        });
+
+        document.querySelectorAll('#main-nav button').forEach(btn => {
+            btn.addEventListener('click', () => switchTab(btn.dataset.target));
+        });
+
+        document.getElementById('mobile-menu-btn').addEventListener('click', () => {
+            document.getElementById('mobile-nav').classList.remove('hidden');
+        });
+        document.getElementById('close-mobile-btn').addEventListener('click', () => {
+            document.getElementById('mobile-nav').classList.add('hidden');
+        });
+
+        function initRS485Chart() {
+            const ctx = document.getElementById('rs485Chart').getContext('2d');
+            const noiseSlider = document.getElementById('noiseSlider');
+            
+            const generateData = (noiseLevel) => {
+                let labels = [];
+                let dataPlus = [];
+                let dataMinus = [];
+                let dataResult = [];
+                for(let i=0; i<=50; i++) {
+                    labels.push(i);
+                    let baseSignal = Math.sin(i * 0.5) * 10;
+                    let noise = (Math.random() - 0.5) * (noiseLevel / 100) * 15;
+                    dataPlus.push(baseSignal + noise);
+                    dataMinus.push(-baseSignal + noise);
+                    dataResult.push((baseSignal + noise) - (-baseSignal + noise));
+                }
+                return {labels, dataPlus, dataMinus, dataResult};
+            };
+
+            const initialData = generateData(50);
+
+            rs485ChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: initialData.labels,
+                    datasets: [
+                        { label: 'Data + (Pino 3)', data: initialData.dataPlus, borderColor: '#3b82f6', borderWidth: 2, tension: 0.4, pointRadius: 0 },
+                        { label: 'Data - (Pino 2)', data: initialData.dataMinus, borderColor: '#ef4444', borderWidth: 2, tension: 0.4, pointRadius: 0 },
+                        { label: 'Resultado Subtração', data: initialData.dataResult, borderColor: '#10b981', borderWidth: 4, tension: 0.4, pointRadius: 0, borderDash: [5, 5] }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: { duration: 0 },
+                    plugins: {
+                        legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 10 } } },
+                        tooltip: { enabled: false }
+                    },
+                    scales: {
+                        x: { display: false },
+                        y: { min: -25, max: 25, grid: { color: '#e5e7eb' } }
+                    }
+                }
+            });
+
+            noiseSlider.addEventListener('input', (e) => {
+                const newData = generateData(e.target.value);
+                rs485ChartInstance.data.datasets[0].data = newData.dataPlus;
+                rs485ChartInstance.data.datasets[1].data = newData.dataMinus;
+                rs485ChartInstance.data.datasets[2].data = newData.dataResult;
+                rs485ChartInstance.update();
+            });
+        }
+
+        function switchFixtureProfile(profileKey) {
+            selectedProfileKey = profileKey;
+            const profile = fixtureProfiles[profileKey];
+            if (!profile) return;
+
+            // Reset local cache values to default for selected layout
+            currentDmxValues = {};
+            profile.channels.forEach(ch => {
+                currentDmxValues[ch.key] = ch.default;
+            });
+
+            // Reset interpolation targets immediately to avoid sweep on switch
+            if (profileKey === 'movings') {
+                interpolatedPan = currentDmxValues['pan'];
+                interpolatedTilt = currentDmxValues['tilt'];
+            }
+
+            // Update Viewport Header Information
+            document.getElementById('active-prof-icon').innerText = profile.icon;
+            document.getElementById('active-prof-title').innerText = profile.title;
+
+            // Render dynamic slide and channel layout list in left grid
+            const grid = document.getElementById('channels-display-grid');
+            grid.innerHTML = '';
+            
+            profile.channels.forEach((ch, index) => {
+                const item = document.createElement('div');
+                item.className = 'bg-stone-800 border border-stone-700 p-3 rounded-xl flex flex-col md:flex-row md:items-center gap-3 transition-colors';
+                
+                item.innerHTML = `
+                    <div class="flex items-center gap-3 md:w-1/2">
+                        <span class="bg-amber-600 text-stone-100 font-mono text-xs font-bold w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0">CH${index + 1}</span>
+                        <span class="text-sm font-medium text-stone-200 select-none">${ch.name}</span>
+                    </div>
+                    <div class="flex items-center gap-3 flex-1">
+                        <input type="range" 
+                               id="slider-${ch.key}" 
+                               min="${ch.min}" 
+                               max="${ch.max}" 
+                               value="${ch.default}" 
+                               class="flex-1 accent-amber-500 bg-stone-700 h-1.5 rounded-lg appearance-none cursor-pointer"
+                               oninput="updateDmxValue('${ch.key}', this.value)">
+                        <span id="val-${ch.key}" class="text-xs font-mono bg-stone-900 text-amber-500 px-2.5 py-1 rounded-md w-11 text-center font-bold">${ch.default}</span>
+                    </div>
+                `;
+                grid.appendChild(item);
+            });
+
+            // Reconfigure static visual properties depending on chosen structure
+            const yoke = document.getElementById('v-fixture-yoke');
+            const vFixture = document.getElementById('v-fixture-body');
+            const infoText = document.getElementById('simulator-info-text');
+
+            if (profileKey === 'movings') {
+                yoke.classList.remove('hidden');
+                vFixture.classList.remove('rounded-full');
+                vFixture.classList.add('rounded-lg');
+                infoText.innerText = "Simulando Moving Head. Pan move horizontalmente, Tilt move verticalmente (frente/trás) com velocidade dependente do CH3.";
+            } else if (profileKey === 'cobs') {
+                yoke.classList.add('hidden');
+                vFixture.classList.add('rounded-full');
+                vFixture.classList.remove('rounded-lg');
+                infoText.innerText = "Simulando Projetor COB. Dimmer mestre e mistura balanceada de COLD WHITE e WARM WHITE.";
+            } else {
+                yoke.classList.add('hidden');
+                vFixture.classList.add('rounded-full');
+                vFixture.classList.remove('rounded-lg');
+                infoText.innerText = "Simulando PAR LED clássico. Mistura de cores RGBW direta com suporte a Strobo e loop de efeitos.";
+            }
+
+            // Sync visual button toggle states
+            const ids = ['parled', 'cobs', 'movings'];
+            ids.forEach(id => {
+                const btn = document.getElementById(`btn-prof-${id}`);
+                if (id === profileKey) {
+                    btn.className = "p-4 rounded-xl border text-left transition-all bg-amber-50 border-amber-500 ring-2 ring-amber-500/20";
+                } else {
+                    btn.className = "p-4 rounded-xl border text-left transition-all bg-white border-stone-200 hover:border-stone-300";
+                }
+            });
+        }
+
+        // Real-time slide synchronization
+        function updateDmxValue(key, val) {
+            currentDmxValues[key] = parseInt(val);
+            document.getElementById(`val-${key}`).innerText = val;
+        }
+
+        function renderStageLoop() {
+            // 1. Calculate general strobe flickers if active
+            const strobeVal = currentDmxValues['strobe'] || currentDmxValues['gobo_strobe'] || currentDmxValues['strobe_wash'] || 0;
+            if (strobeVal > 10) {
+                const hz = 1 + (strobeVal / 255) * 18;
+                strobeActiveState = (Math.floor(Date.now() / (1000 / hz)) % 2 === 0);
+            } else {
+                strobeActiveState = true;
+            }
+
+            // Reference to UI stage components
+            const container = document.getElementById('v-stage-container');
+            const beam = document.getElementById('v-light-beam');
+            const spot = document.getElementById('v-floor-spot');
+            const glow = document.getElementById('v-floor-glow');
+            const goboText = document.getElementById('v-gobo-projected');
+            const fixtureMount = document.getElementById('v-fixture-mount');
+            const fixtureLens = document.getElementById('v-fixture-lens');
+
+            // Fallback checking in case tab isn't active/ready
+            if (!container || !beam || !spot || !glow) {
+                animationFrameId = requestAnimationFrame(renderStageLoop);
+                return;
+            }
+
+            const W = container.clientWidth;
+            const H = container.clientHeight;
+            const emitterX = W / 2;
+            const emitterY = 40; // Physical pixel height offset of emitter
+
+            // Base Dimmer Scale factor
+            const dimmer = (currentDmxValues['dimmer'] !== undefined ? currentDmxValues['dimmer'] : 255) / 255;
+            let finalOpacity = dimmer * (strobeActiveState ? 0.35 : 0);
+
+            // 2. Set default Gobo character projections to blank
+            goboText.innerText = "";
+            spot.style.backgroundImage = "none";
+
+            let lightColor = "rgba(255, 255, 255, 1)";
+            let spotShadowColor = "rgba(255, 255, 255, 0.8)";
+            let glowBgColor = "rgba(255, 255, 255, 1)";
+            let glowShadowColor = "rgba(255, 255, 255, 0.8)";
+            let goboColorStr = "#0c0a09"; // Default dark silhouette for PAR/COB
+            let goboShadow = "none";
+
+            // 3. Apply profile-specific rendering calculations
+            if (selectedProfileKey === 'parled') {
+                // Read color sliders
+                let r = currentDmxValues['red'] || 0;
+                let g = currentDmxValues['green'] || 0;
+                let b = currentDmxValues['blue'] || 0;
+                const w = currentDmxValues['white'] || 0;
+
+                // Handle automated program spectrum shifts if 'effects' channel is up
+                const effects = currentDmxValues['effects'] || 0;
+                if (effects > 10) {
+                    const timeFactor = Date.now() * 0.002 * (effects / 255 + 0.1);
+                    r = Math.floor((Math.sin(timeFactor) * 0.5 + 0.5) * 255);
+                    g = Math.floor((Math.sin(timeFactor + 2) * 0.5 + 0.5) * 255);
+                    b = Math.floor((Math.sin(timeFactor + 4) * 0.5 + 0.5) * 255);
+                }
+
+                const mixedR = Math.min(255, r + w);
+                const mixedG = Math.min(255, g + w);
+                const mixedB = Math.min(255, b + w);
+
+                lightColor = `rgb(${mixedR}, ${mixedG}, ${mixedB})`;
+                spotShadowColor = `rgba(${mixedR}, ${mixedG}, ${mixedB}, 0.8)`;
+                glowBgColor = lightColor;
+                glowShadowColor = spotShadowColor;
+                
+                // Static pointed straight-down coordinate parameters
+                const spotY = 240;
+                const spotX = emitterX;
+                const spotRadius = 40;
+
+                // Position spot and clip-path beam statically
+                spot.style.left = `${spotX}px`;
+                spot.style.top = `${spotY}px`;
+                spot.style.width = `${spotRadius * 2}px`;
+                spot.style.height = `${spotRadius * 0.8}px`;
+                spot.style.transform = `translate(-50%, -50%)`;
+
+                beam.style.clipPath = `polygon(${emitterX - 6}px ${emitterY}px, ${emitterX + 6}px ${emitterY}px, ${spotX + spotRadius}px ${spotY}px, ${spotX - spotRadius}px ${spotY}px)`;
+                fixtureMount.style.transform = `rotate(0deg)`;
+                fixtureLens.style.transform = `translateY(0px)`;
+
+            } else if (selectedProfileKey === 'cobs') {
+                // Balance Cold White (CW) and Warm White (WW) Kelvin ranges
+                const cw = currentDmxValues['cold_white'] || 0;
+                const ww = currentDmxValues['warm_white'] || 0;
+
+                const cwR = 210, cwG = 230, cwB = 255;
+                const wwR = 255, wwG = 170, wwB = 80;
+
+                const totalWeight = (cw + ww) || 1;
+                const r = Math.floor((cwR * cw + wwR * ww) / totalWeight);
+                const g = Math.floor((cwG * cw + wwG * ww) / totalWeight);
+                const b = Math.floor((cwB * cw + wwB * ww) / totalWeight);
+
+                const powerRatio = Math.max(cw, ww) / 255;
+                finalOpacity = finalOpacity * powerRatio;
+
+                lightColor = `rgb(${r}, ${g}, ${b})`;
+                spotShadowColor = `rgba(${r}, ${g}, ${b}, 0.8)`;
+                glowBgColor = lightColor;
+                glowShadowColor = spotShadowColor;
+
+                // Static pointed straight-down coordinates
+                const spotY = 240;
+                const spotX = emitterX;
+                const spotRadius = 45;
+
+                spot.style.left = `${spotX}px`;
+                spot.style.top = `${spotY}px`;
+                spot.style.width = `${spotRadius * 2}px`;
+                spot.style.height = `${spotRadius * 0.8}px`;
+                spot.style.transform = `translate(-50%, -50%)`;
+
+                beam.style.clipPath = `polygon(${emitterX - 8}px ${emitterY}px, ${emitterX + 8}px ${emitterY}px, ${spotX + spotRadius}px ${spotY}px, ${spotX - spotRadius}px ${spotY}px)`;
+                fixtureMount.style.transform = `rotate(0deg)`;
+                fixtureLens.style.transform = `translateY(0px)`;
+
+            } else if (selectedProfileKey === 'movings') {
+                // Moving Head Physical Target Tilt and Target Pan
+                const targetPan = currentDmxValues['pan'] !== undefined ? currentDmxValues['pan'] : 128;
+                const targetTilt = currentDmxValues['tilt'] !== undefined ? currentDmxValues['tilt'] : 128;
+
+                // Process CH3 (Velocidade do Pan/Tilt) to calculate interpolation factor
+                const speedVal = currentDmxValues['pantilt_speed'] !== undefined ? currentDmxValues['pantilt_speed'] : 128;
+                let lerpFactor = 1.0;
+                if (speedVal === 0) {
+                    lerpFactor = 1.0;
+                } else {
+                    lerpFactor = 0.005 + ((speedVal - 1) / 254) * 0.995;
+                }
+
+                // Smoothly slide current coordinates using calculated rate
+                interpolatedPan += (targetPan - interpolatedPan) * lerpFactor;
+                interpolatedTilt += (targetTilt - interpolatedTilt) * lerpFactor;
+
+                // Convert smoothed DMX signals into physical coordinates
+                const panAngle = ((interpolatedPan / 255) * 80 - 40) * (Math.PI / 180);
+                const tiltAngle = ((interpolatedTilt / 255) * 90 - 45) * (Math.PI / 180);
+
+                // Base Y vertical position representing pointed straight-down
+                const baselineY = 240; 
+
+                // Spot Y shifts up (pointing back) or down (pointing front) based on tiltAngle
+                const spotY = baselineY + 50 * Math.sin(tiltAngle);
+
+                // Spot X sweeps horizontally based on Pan angle and distance from emitter
+                const distanceY = spotY - emitterY;
+                const spotX = emitterX + distanceY * Math.tan(panAngle);
+
+                // Spot gets larger when closer (tilted front) and smaller when further (tilted back)
+                const baseRadius = 32;
+                const spotRadius = baseRadius * (1 + 0.45 * Math.sin(tiltAngle));
+
+                // Position floor spot
+                spot.style.left = `${spotX}px`;
+                spot.style.top = `${spotY}px`;
+                spot.style.width = `${spotRadius * 2}px`;
+                spot.style.height = `${spotRadius * 0.75}px`; // ellipse perspective
+                spot.style.transform = `translate(-50%, -50%)`;
+
+                // Calculate dynamic clip-path to connect emitter to the left/right edges of spot
+                const leftEdgeX = spotX - spotRadius;
+                const rightEdgeX = spotX + spotRadius;
+                beam.style.clipPath = `polygon(${emitterX - 5}px ${emitterY}px, ${emitterX + 5}px ${emitterY}px, ${rightEdgeX}px ${spotY}px, ${leftEdgeX}px ${spotY}px)`;
+
+                // Physically tilt the lens inside the body to simulate front/back depth pointing
+                const lensYOffset = 6 * Math.sin(tiltAngle);
+                const lensXOffset = 4 * Math.sin(panAngle);
+                fixtureLens.style.transform = `translate(${lensXOffset}px, ${lensYOffset}px)`;
+                
+                // Swivel physical mounting bracket on X axis (Pan swing)
+                const panAngleDegrees = panAngle * (180 / Math.PI);
+                fixtureMount.style.transform = `rotate(${panAngleDegrees}deg)`;
+
+                // Process color wheel (CH7) selections - EXCLUSIVELY controls central spot & gobo color now
+                const cwValue = currentDmxValues['color_wheel'] || 0;
+                let wheelColor = { r: 255, g: 255, b: 255 }; // Default White
+                if (cwValue > 25 && cwValue <= 64) wheelColor = { r: 239, g: 68, b: 68 };     // Red
+                else if (cwValue > 64 && cwValue <= 104) wheelColor = { r: 34, g: 197, b: 94 };  // Green
+                else if (cwValue > 104 && cwValue <= 144) wheelColor = { r: 59, g: 130, b: 246 }; // Blue
+                else if (cwValue > 144 && cwValue <= 184) wheelColor = { r: 234, g: 179, b: 8 };   // Yellow
+                else if (cwValue > 184 && cwValue <= 224) wheelColor = { r: 217, g: 70, b: 239 };  // Magenta
+                else if (cwValue > 224) wheelColor = { r: 6, g: 182, b: 212 };                  // Cyan
+
+                // Process wash color mixing (CH9-12) - EXCLUSIVELY controls background wash ring now
+                const wr = currentDmxValues['red_wash'] || 0;
+                const wg = currentDmxValues['green_wash'] || 0;
+                const wb = currentDmxValues['blue_wash'] || 0;
+                const ww = currentDmxValues['white_wash'] || 0;
+
+                const washR = Math.min(255, wr + ww);
+                const washG = Math.min(255, wg + ww);
+                const washB = Math.min(255, wb + ww);
+
+                // Set distinct colors: central beam inherits the color wheel, floor wash inherits wash DMX values
+                goboColorStr = `rgb(${wheelColor.r}, ${wheelColor.g}, ${wheelColor.b})`;
+                goboShadow = `0 0 10px ${goboColorStr}`;
+                
+                lightColor = goboColorStr;
+                spotShadowColor = `rgba(${wheelColor.r}, ${wheelColor.g}, ${wheelColor.b}, 0.8)`;
+
+                // Background wash elements mapping
+                glowBgColor = `rgb(${washR}, ${washG}, ${washB})`;
+                glowShadowColor = `rgba(${washR}, ${washG}, ${washB}, 0.8)`;
+
+                // Process Gobo Wheel wheel projections (CH8)
+                const gwValue = currentDmxValues['gobo_wheel'] || 0;
+                if (gwValue > 30 && gwValue <= 80) {
+                    goboText.innerText = "★"; // Star gobo
+                } else if (gwValue > 80 && gwValue <= 140) {
+                    goboText.innerText = "◎"; // Ring gobo
+                } else if (gwValue > 140 && gwValue <= 200) {
+                    goboText.innerText = "🌀"; // Spiral gobo
+                } else if (gwValue > 200) {
+                    goboText.innerText = "❄"; // Floral burst
+                }
+            }
+
+            // 4. Flush computed visual variables to the CSS engine
+            beam.style.background = `linear-gradient(to bottom, ${lightColor.replace("rgb", "rgba").replace(")", ", 0.9)")}, rgba(0,0,0,0))`;
+            beam.style.opacity = finalOpacity;
+            
+            // Render glow with screen-blend inside, keeping Gobo sharp in the normal parent container
+            glow.style.backgroundColor = glowBgColor;
+            glow.style.boxShadow = `0 0 35px 15px ${glowShadowColor}`;
+            
+            spot.style.opacity = dimmer * (strobeActiveState ? 0.95 : 0) * (selectedProfileKey === 'cobs' ? 0.8 : 1.0);
+            fixtureLens.style.backgroundColor = lightColor;
+
+            // Injeta as cores da projeção do Gobo diretamente pelo JS, sobressaindo as classes CSS estáticas
+            goboText.style.color = goboColorStr;
+            goboText.style.textShadow = goboShadow;
+
+            // Loop animation at target refresh rate
+            animationFrameId = requestAnimationFrame(renderStageLoop);
+        }
+
+        // Mod 3: Priority Stack Interaction
+        function initPriorityStack() {
+            const items = document.querySelectorAll('#priority-stack div');
+            const descArea = document.getElementById('priority-desc');
+            
+            items.forEach(item => {
+                item.addEventListener('click', () => {
+                    items.forEach(i => i.classList.remove('ring-2', 'ring-offset-2', 'ring-amber-500'));
+                    item.classList.add('ring-2', 'ring-offset-2', 'ring-amber-500');
+                    descArea.innerHTML = `<strong>${item.innerText.split('.')[1].trim()}:</strong> ${item.dataset.desc}`;
+                });
+            });
+        }
+
+        // Mod 3: Wizard Phase Chart
+        function initPhaseChart() {
+            const ctx = document.getElementById('phaseChart').getContext('2d');
+            const phaseSelect = document.getElementById('phaseSelect');
+            const explanationBox = document.getElementById('phase-explanation');
+            
+            const getPhaseData = (offsetDegrees) => {
+                let labels = [];
+                let d1 = [], d2 = [], d3 = [], d4 = [];
+                const offsetRad = offsetDegrees * (Math.PI / 180);
+                
+                for(let i=0; i<=100; i++) {
+                    let x = (i/100) * Math.PI * 4; // 2 full cycles
+                    labels.push(i);
+                    d1.push(Math.sin(x) * 10);
+                    d2.push(Math.sin(x - offsetRad) * 10);
+                    d3.push(Math.sin(x - offsetRad*2) * 10);
+                    d4.push(Math.sin(x - offsetRad*3) * 10);
+                }
+                return {labels, d1, d2, d3, d4};
+            };
+
+            const initData = getPhaseData(0);
+
+            phaseChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: initData.labels,
+                    datasets: [
+                        { label: 'Refletor 1', data: initData.d1, borderColor: '#ef4444', tension: 0.4, pointRadius: 0, borderWidth: 2 },
+                        { label: 'Refletor 2', data: initData.d2, borderColor: '#f59e0b', tension: 0.4, pointRadius: 0, borderWidth: 2 },
+                        { label: 'Refletor 3', data: initData.d3, borderColor: '#10b981', tension: 0.4, pointRadius: 0, borderWidth: 2 },
+                        { label: 'Refletor 4', data: initData.d4, borderColor: '#3b82f6', tension: 0.4, pointRadius: 0, borderWidth: 2 }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { position: 'top', labels: { boxWidth: 10, font: {size: 11} } } },
+                    scales: { x: { display: false }, y: { display: false, min: -12, max: 12 } },
+                    animation: { duration: 500, easing: 'easeOutQuart' }
+                }
+            });
+
+            const explanations = {
+                "0": "<strong>Com 0&deg;:</strong> Todos os aparelhos recebem o mesmo comando ao mesmo tempo. Ideal para estrobos ou pancadas de luz uníssonas.",
+                "45": "<strong>Com 45&deg;:</strong> O atraso é pequeno (1/8 de ciclo). As curvas acompanham-se de perto, gerando um degradê de cores muito suave e fluido correndo pelo palco.",
+                "90": "<strong>Com 90&deg;:</strong> Efeito Cascata. O atraso de 1/4 do ciclo divide perfeitamente os 4 aparelhos ao longo de uma volta completa (360&deg;). Máxima distribuição geométrica.",
+                "180": "<strong>Com 180&deg;:</strong> Fase invertida. Metade dos aparelhos faz exatamente o oposto da outra metade ao mesmo tempo (ex: 1 e 3 sobem, 2 e 4 descem)."
+            };
+
+            phaseSelect.addEventListener('change', (e) => {
+                const deg = parseInt(e.target.value);
+                const newData = getPhaseData(deg);
+                phaseChartInstance.data.datasets[0].data = newData.d1;
+                phaseChartInstance.data.datasets[1].data = newData.d2;
+                phaseChartInstance.data.datasets[2].data = newData.d3;
+                phaseChartInstance.data.datasets[3].data = newData.d4;
+                phaseChartInstance.update();
+                explanationBox.innerHTML = explanations[deg];
+            });
+        }
+
+        // Mod 6: Accordion FAQ
+        function initAccordion() {
+            const btns = document.querySelectorAll('#faq-container button');
+            btns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const content = btn.nextElementSibling;
+                    const symbol = btn.querySelector('span:last-child');
+                    const isExpanded = content.classList.contains('expanded');
+                    
+                    // Close all
+                    document.querySelectorAll('.accordion-content').forEach(c => c.classList.remove('expanded'));
+                    document.querySelectorAll('#faq-container button span:last-child').forEach(s => {
+                        s.style.transform = 'rotate(0deg)';
+                        s.innerText = '+';
+                    });
+
+                    // Open target if wasn't open
+                    if(!isExpanded) {
+                        content.classList.add('expanded');
+                        symbol.style.transform = 'rotate(45deg)';
+                        symbol.innerText = '×';
+                    }
+                });
+            });
+        }
+
+        // Boot
+        window.onload = function () {
+            initRS485Chart();
+            initPriorityStack();
+            initPhaseChart();
+            initAccordion();
+            
+            // Fire layout configurations for target default device (parled)
+            switchFixtureProfile('parled');
+
+            // Fire Stage Simulator 60FPS loop
+            renderStageLoop();
+        };
+
+    </script>
+</body>
+</html>
